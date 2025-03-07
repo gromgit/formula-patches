@@ -1,0 +1,164 @@
+diff --git a/internal/cache/file/downloader/job.go b/internal/cache/file/downloader/job.go
+index 77bf3298d..300362be0 100644
+--- a/internal/cache/file/downloader/job.go
++++ b/internal/cache/file/downloader/job.go
+@@ -19,11 +19,9 @@ import (
+ 	"errors"
+ 	"fmt"
+ 	"io"
+-	"io/fs"
+ 	"os"
+ 	"reflect"
+ 	"strings"
+-	"syscall"
+ 
+ 	"github.com/googlecloudplatform/gcsfuse/v2/cfg"
+ 	"github.com/googlecloudplatform/gcsfuse/v2/common"
+@@ -389,17 +387,7 @@ func (job *Job) createCacheFile() (*os.File, error) {
+ 	openFileFlags := os.O_TRUNC | os.O_WRONLY
+ 	var cacheFile *os.File
+ 	var err error
+-	// Try using O_DIRECT while opening file when parallel downloads are enabled
+-	// and O_DIRECT use is not disabled.
+-	if job.fileCacheConfig.EnableParallelDownloads && job.fileCacheConfig.EnableODirect {
+-		cacheFile, err = cacheutil.CreateFile(job.fileSpec, openFileFlags|syscall.O_DIRECT)
+-		if errors.Is(err, fs.ErrInvalid) || errors.Is(err, syscall.EINVAL) {
+-			logger.Warnf("downloadObjectAsync: failure in opening file with O_DIRECT, falling back to without O_DIRECT")
+-			cacheFile, err = cacheutil.CreateFile(job.fileSpec, openFileFlags)
+-		}
+-	} else {
+-		cacheFile, err = cacheutil.CreateFile(job.fileSpec, openFileFlags)
+-	}
++	cacheFile, err = cacheutil.CreateFile(job.fileSpec, openFileFlags)
+ 
+ 	return cacheFile, err
+ }
+diff --git a/internal/fs/wrappers/monitoring.go b/internal/fs/wrappers/monitoring.go
+index aada6752a..da5c8767b 100644
+--- a/internal/fs/wrappers/monitoring.go
++++ b/internal/fs/wrappers/monitoring.go
+@@ -59,14 +59,11 @@ func categorize(err error) string {
+ 		errno = DefaultFSError
+ 	}
+ 	switch errno {
+-	case syscall.ELNRNG,
+-		syscall.ENODEV,
+-		syscall.ENONET,
++	case syscall.ENODEV,
+ 		syscall.ENOSTR,
+ 		syscall.ENOTSOCK,
+ 		syscall.ENXIO,
+ 		syscall.EPROTO,
+-		syscall.ERFKILL,
+ 		syscall.EXDEV:
+ 		return errDevice
+ 
+@@ -77,10 +74,8 @@ func categorize(err error) string {
+ 		return errFileExists
+ 
+ 	case syscall.EBADF,
+-		syscall.EBADFD,
+ 		syscall.EFBIG,
+ 		syscall.EISDIR,
+-		syscall.EISNAM,
+ 		syscall.ENOTBLK:
+ 		return errFileDir
+ 
+@@ -99,8 +94,6 @@ func categorize(err error) string {
+ 
+ 	case syscall.E2BIG,
+ 		syscall.EALREADY,
+-		syscall.EBADE,
+-		syscall.EBADR,
+ 		syscall.EDOM,
+ 		syscall.EINPROGRESS,
+ 		syscall.ENOEXEC,
+@@ -110,46 +103,22 @@ func categorize(err error) string {
+ 		syscall.ESPIPE:
+ 		return errInvalidOp
+ 
+-	case syscall.EADV,
+-		syscall.EBADSLT,
+-		syscall.EBFONT,
+-		syscall.ECHRNG,
+-		syscall.EDOTDOT,
+-		syscall.EIDRM,
++	case syscall.EIDRM,
+ 		syscall.EILSEQ,
+-		syscall.ELIBACC,
+-		syscall.ELIBBAD,
+-		syscall.ELIBEXEC,
+-		syscall.ELIBMAX,
+-		syscall.ELIBSCN,
+-		syscall.EMEDIUMTYPE,
+-		syscall.ENAVAIL,
+-		syscall.ENOANO,
+-		syscall.ENOCSI,
+ 		syscall.ENODATA,
+-		syscall.ENOMEDIUM,
+ 		syscall.ENOMSG,
+-		syscall.ENOPKG,
+ 		syscall.ENOSR,
+-		syscall.ENOTNAM,
+ 		syscall.ENOTRECOVERABLE,
+ 		syscall.EOVERFLOW,
+-		syscall.ERESTART,
+-		syscall.ESRMNT,
+ 		syscall.ESTALE,
+ 		syscall.ETIME,
+-		syscall.ETOOMANYREFS,
+-		syscall.EUCLEAN,
+-		syscall.EUNATCH,
+-		syscall.EXFULL:
++		syscall.ETOOMANYREFS:
+ 		return errMisc
+ 
+ 	case syscall.EADDRINUSE,
+ 		syscall.EADDRNOTAVAIL,
+ 		syscall.EAFNOSUPPORT,
+ 		syscall.EBADMSG,
+-		syscall.EBADRQC,
+-		syscall.ECOMM,
+ 		syscall.ECONNABORTED,
+ 		syscall.ECONNREFUSED,
+ 		syscall.ECONNRESET,
+@@ -158,10 +127,6 @@ func categorize(err error) string {
+ 		syscall.EHOSTDOWN,
+ 		syscall.EHOSTUNREACH,
+ 		syscall.EISCONN,
+-		syscall.EL2HLT,
+-		syscall.EL2NSYNC,
+-		syscall.EL3HLT,
+-		syscall.EL3RST,
+ 		syscall.EMSGSIZE,
+ 		syscall.EMULTIHOP,
+ 		syscall.ENETDOWN,
+@@ -170,17 +135,13 @@ func categorize(err error) string {
+ 		syscall.ENOLINK,
+ 		syscall.ENOPROTOOPT,
+ 		syscall.ENOTCONN,
+-		syscall.ENOTUNIQ,
+ 		syscall.EPFNOSUPPORT,
+ 		syscall.EPIPE,
+ 		syscall.EPROTONOSUPPORT,
+ 		syscall.EPROTOTYPE,
+-		syscall.EREMCHG,
+ 		syscall.EREMOTE,
+-		syscall.EREMOTEIO,
+ 		syscall.ESHUTDOWN,
+ 		syscall.ESOCKTNOSUPPORT,
+-		syscall.ESTRPIPE,
+ 		syscall.ETIMEDOUT:
+ 		return errNetwork
+ 
+@@ -191,10 +152,6 @@ func categorize(err error) string {
+ 		return errNotADir
+ 
+ 	case syscall.EACCES,
+-		syscall.EKEYEXPIRED,
+-		syscall.EKEYREJECTED,
+-		syscall.EKEYREVOKED,
+-		syscall.ENOKEY,
+ 		syscall.EPERM,
+ 		syscall.EROFS,
+ 		syscall.ETXTBSY:
