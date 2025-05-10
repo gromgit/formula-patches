@@ -2,19 +2,18 @@ diff --git a/internal/cache/file/downloader/job.go b/internal/cache/file/downloa
 index 77bf3298d..300362be0 100644
 --- a/internal/cache/file/downloader/job.go
 +++ b/internal/cache/file/downloader/job.go
-@@ -19,11 +19,9 @@ import (
+@@ -19,10 +19,8 @@ import (
  	"errors"
  	"fmt"
  	"io"
 -	"io/fs"
  	"os"
  	"reflect"
- 	"strings"
 -	"syscall"
  
  	"github.com/googlecloudplatform/gcsfuse/v2/cfg"
  	"github.com/googlecloudplatform/gcsfuse/v2/common"
-@@ -389,17 +387,7 @@ func (job *Job) createCacheFile() (*os.File, error) {
+@@ -388,17 +386,7 @@ func (job *Job) createCacheFile() (*os.File, error) {
  	openFileFlags := os.O_TRUNC | os.O_WRONLY
  	var cacheFile *os.File
  	var err error
